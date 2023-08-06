@@ -1,17 +1,51 @@
 start:
   description: Start cooking a profile.
   fields:
-    entity_id:
-      description: Name of the xiaomi miio entity.
-      example: "xiaomi_miio_cooker.xiaomi_miio_device"
     profile:
       description: Profile data which describes the temperature curve.
-      example: 0001E10100000000000080026E10082B126E1412698CAA555555550014280A6E0C02050506050505055A14040A0C0C0D00040505060A0F086E6E20000C0A5A28036468686A0004040500000000000000010202020204040506070708001212180C1E2D2D37000000000000000000000099A5
+      example: 01060500000008090c000c00060000001200000002aa0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000280a0f260300915573000000008278736e001000756e0028050075826e002810ff75266e0228100069005a00b2e6
+      required: true
+      selector:
+        text:
+    duration:
+      description: Cooking duration in minutes. Will only be applied for profiles that allow it.
+      example: 120
+      required: false
+      selector:
+        duration:
+      #   number:
+      #     min: 0
+      #     max: 1440
+      #     unit_of_measurement: "min"
+    schedule:
+      description: Time in minutes until the cooking should be finished
+      example: 180
+      required: false
+      selector:
+        datetime:
+        # number:
+        #   min: 0
+        #   max: 1440
+        #   unit_of_measurement: "min"
+    auto_keep_warm:
+      description: Keep warm after cooking?
+      required: false
+      selector:
+        boolean:
+    taste:
+      description: Rice hardness
+      required: false
+      selector:
+        select:
+          mode: dropdown
+          options:
+            - label: Soft
+              value: 0
+            - label: Moderate
+              value: 1
+            - label: Rigid
+              value: 2
 
 stop:
   description: Stop the cooking process.
-  fields:
-    entity_id:
-      description: Name of the xiaomi miio entity.
-      example: "xiaomi_miio_cooker.xiaomi_miio_device"
 

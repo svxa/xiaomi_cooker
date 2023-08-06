@@ -14,27 +14,20 @@ DATA_KEY = "xiaomi_miio_cooker_data"
 DATA_TEMPERATURE_HISTORY = "temperature_history"
 DATA_STATE = "state"
 
+
 SENSOR_TYPES = {
     "mode": ["Mode", None, "mode", None, "mdi:bowl"],
     "menu": ["Menu", None, "menu", None, "mdi:menu"],
-    "temperature": ["Temperature", None, "temperature", "°C", None],
+    "fault": ["Fault", None, "fault", None, "mdi:alert"],
     "remaining": ["Remaining", None, "remaining", "min", "mdi:timer"],
+    "cooking_delayed": ["Cooking delayed", None, "cooking_delayed", "min", "mdi:timer"],
+    "temperature": ["Temperature", None, "temperature", "°C", "mdi:thermometer"],
     "duration": ["Duration", None, "duration", "min", "mdi:timelapse"],
-    "favorite": ["Favorite", None, "favorite", None, "mdi:information-outline"],
-    "state": ["State", "stage", "state", None, "mdi:playlist-check"],
-    "rice_id": ["Rice Id", "stage", "rice_id", None, "mdi:rice"],
-    "taste": ["Taste", "stage", "taste", None, "mdi:flash-outline"],
-    "taste_phase": ["Taste Phase", "stage", "taste_phase", None, "mdi:flash-outline"],
-    "stage_name": ["Stage Name", "stage", "name", None, "mdi:stairs"],
-    "stage_description": [
-        "Stage Description",
-        "stage",
-        "description",
-        None,
-        "mdi:stairs",
-    ],
+    "keep_warm": ["Keep warm", None, "keep_warm", None, "mdi:heat-wave"],
+    "keep_warm_duration": ["Keep warm duration", None, "keep_warm_duration", None, "mdi:timer"],
+    "rice": ["Rice Id", None, "rice", None, "mdi:rice"],
+    "taste": ["Taste", None, "taste", None, "mdi:flash-outline"],
 }
-
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Set up the Xiaomi Cooker sensors."""
@@ -51,7 +44,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 
 
 class XiaomiCookerSensor(Entity):
-    def __init__(self, device, host, config):
+    def __init__(self, device, host, config) -> None:
         """Initialize sensor."""
         self._device = device
         self._host = host
@@ -80,7 +73,7 @@ class XiaomiCookerSensor(Entity):
     @callback
     def async_update_callback(self, host):
         """Update state."""
-        from miio.cooker import OperationMode
+        from miio.integrations.chunmi.cooker.cooker_wy3 import OperationMode
 
         if self._host is not host:
             return

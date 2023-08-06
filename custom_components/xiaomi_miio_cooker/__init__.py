@@ -10,8 +10,11 @@ from homeassistant.helpers.dispatcher import dispatcher_send
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import track_time_interval
 from homeassistant.util.dt import utcnow
-from miio import Cooker, Device, DeviceException
-from miio.cooker import OperationMode
+from miio import Cooker, Device, DeviceException, CookerWY3
+from miio.integrations.chunmi.cooker.cooker_wy3 import OperationMode
+from miio.miot_models import DeviceModel
+import json
+from pathlib import Path
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +35,7 @@ MODEL_NORMAL2 = "chunmi.cooker.normal2"
 MODEL_NORMAL3 = "chunmi.cooker.normal3"
 MODEL_NORMAL4 = "chunmi.cooker.normal4"
 MODEL_NORMAL5 = "chunmi.cooker.normal5"
+MODEL_WY3 = "chunmi.cooker.wy3"
 
 SUPPORTED_MODELS = [
     MODEL_PRESSURE1,
@@ -41,6 +45,7 @@ SUPPORTED_MODELS = [
     MODEL_NORMAL3,
     MODEL_NORMAL4,
     MODEL_NORMAL5,
+    MODEL_WY3,
 ]
 
 CONFIG_SCHEMA = vol.Schema(
@@ -62,6 +67,10 @@ CONFIG_SCHEMA = vol.Schema(
 
 ATTR_MODEL = "model"
 ATTR_PROFILE = "profile"
+ATTR_DURATION = "duration"
+ATTR_SCHEDULE = "schedule"
+ATTR_AUTO_KEEP_WARM = "auto_keep_warm"
+ATTR_TASTE = "taste"
 
 SUCCESS = ["ok"]
 
@@ -71,7 +80,17 @@ SERVICE_SCHEMA = vol.Schema(
     }
 )
 
-SERVICE_SCHEMA_START = SERVICE_SCHEMA.extend({vol.Required(ATTR_PROFILE): cv.string})
+SERVICE_SCHEMA_START = SERVICE_SCHEMA.extend(
+    {
+        vol.Required(ATTR_PROFILE): cv.string,
+        # vol.Optional(ATTR_DURATION): cv.positive_int,
+        vol.Optional(ATTR_DURATION): cv.time_period_dict,
+        # vol.Optional(ATTR_SCHEDULE): cv.positive_int,
+        vol.Optional(ATTR_SCHEDULE): cv.datetime,
+        vol.Optional(ATTR_AUTO_KEEP_WARM): cv.boolean,
+        vol.Optional(ATTR_TASTE): cv.positive_int,
+    }
+)
 
 SERVICE_START = "start"
 SERVICE_STOP = "stop"
@@ -110,11 +129,51 @@ def setup(hass, config):
             raise PlatformNotReady
 
     if model in SUPPORTED_MODELS:
-        cooker = Cooker(host, token)
+        if model == MODEL_WY3:
+            def get_mapping_from_file(file):
+                fullmap = json.loads(file.read_text())
+                def get_iid(element):
+                    return {
+                        element["type"][:1]+"iid": element["iid"]
+                    }
+
+                data = {}
+
+                for service in fullmap.values():
+                    siid = get_iid(service)
+                    properties = service["properties"]
+                    actions = service["actions"]
+
+                    pa = [*properties.values(), *actions.values()]
+
+                    for propact in pa:
+                        d = data[propact["name"]]={
+                                **siid,
+                                **get_iid(propact)
+                                }
+
+                return data
+
+
+            mapping_file = Path(__file__).parent / f"miot_specifications/mappings/{model}.json"
+            mapping = get_mapping_from_file(mapping_file)
+
+            cooker = CookerWY3(
+                ip=host,
+                token = token,
+                model = model,
+                mapping = mapping,
+                )
+
+            specifications_file = Path(__file__).parent / f"miot_specifications/specifications/{model}.json"
+            device_model = DeviceModel.parse_file(specifications_file)
+            cooker.initialize_model(device_model)
+        else:
+            cooker = Cooker(host, token)
 
         hass.data[DOMAIN][host] = cooker
 
-        for component in ["sensor"]:
+        for component in ["sensor", "select"]:
             discovery.load_platform(hass, component, DOMAIN, {}, config)
 
     else:
@@ -150,8 +209,17 @@ def setup(hass, config):
 
     def start_service(call):
         """Service to start cooking."""
+
         profile = call.data.get(ATTR_PROFILE)
-        cooker.start(profile)
+        duration = call.data.get(ATTR_DURATION)
+        schedule = call.data.get(ATTR_SCHEDULE)
+        auto_keep_warm = call.data.get(ATTR_AUTO_KEEP_WARM)
+        taste = call.data.get(ATTR_TASTE)
+
+        if model == MODEL_WY3:
+            cooker.start(profile, duration, schedule, auto_keep_warm, taste)
+        else:
+            cooker.start(profile)
 
     def stop_service(call):
         """Service to stop cooking."""
@@ -169,7 +237,7 @@ def setup(hass, config):
 class XiaomiMiioDevice(Entity):
     """Representation of a Xiaomi MiIO device."""
 
-    def __init__(self, device, name):
+    def __init__(self, device, name) -> None:
         """Initialize the entity."""
         self._device = device
         self._name = name
