@@ -84,9 +84,9 @@ SERVICE_SCHEMA_START = SERVICE_SCHEMA.extend(
     {
         vol.Required(ATTR_PROFILE): cv.string,
         # vol.Optional(ATTR_DURATION): cv.positive_int,
-        vol.Optional(ATTR_DURATION): cv.time_period_dict,
+        vol.Optional(ATTR_DURATION): vol.Any(cv.positive_int, cv.time_period_dict),
         # vol.Optional(ATTR_SCHEDULE): cv.positive_int,
-        vol.Optional(ATTR_SCHEDULE): cv.datetime,
+        vol.Optional(ATTR_SCHEDULE): vol.Any(cv.positive_int, cv.datetime),
         vol.Optional(ATTR_AUTO_KEEP_WARM): cv.boolean,
         vol.Optional(ATTR_TASTE): cv.positive_int,
     }
